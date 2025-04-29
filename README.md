@@ -58,10 +58,14 @@ Framer Motion – Animations that wow 🤩
 
 🛠 Backend
 
-Node.js + Express – Speedy and flexible
+Node.js + Express – Speedy and flexible 
 
 SQLite – Lightweight, powerful, and serverless
 
 JWT – Ironclad authentication
 
-CORS – Seamless client-server love
+CORS – Seamless client-server love  
+
+
+[![Watch the Demo](https://img.youtube.com/vi/HXyq4Lkfc64/0.jpg)](https://youtu.be/HXyq4Lkfc64?feature=shared)
+> Click the image above to watch a quick walkthrough of the platform in action!
