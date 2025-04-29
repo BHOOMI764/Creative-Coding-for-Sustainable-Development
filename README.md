@@ -69,3 +69,9 @@ CORS – Seamless client-server love
 
 [![Watch the Demo](https://img.youtube.com/vi/HXyq4Lkfc64/0.jpg)](https://youtu.be/HXyq4Lkfc64?feature=shared)
 > Click the image above to watch a quick walkthrough of the platform in action!
+
+
+ Useful Links
+📂 GitHub Repository: Creative Coding Showcase Platform
+
+🎬 Demo Video: Watch on YouTube
