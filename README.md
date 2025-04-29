@@ -12,6 +12,7 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 
 👩‍🎓 For Students
 
+
 ✨ Show Off Your Superpowers – Build and publish jaw-dropping projects
 
 🎯 Align with Global Goals – Link your work to real-world UN SDGs
@@ -22,7 +23,10 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 
 📊 Track Ratings & Feedback – Get noticed. Get better. Grow fast.
 
+
 🎓 For Faculty
+
+
 
 🧠 Mentor with Meaning – Review, rate, and reward impactful student work
 
@@ -32,7 +36,10 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 
 📈 Monitor Student Growth – Watch their skills—and their dreams—expand
 
+
 🌟 For Viewers
+
+
 
 🌍 Explore Future-Tech – Browse groundbreaking student projects
 
@@ -42,9 +49,13 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 
 🛠️ Access Source Code – Fork it, remix it, collaborate
 
+
+
 ⚙️ Built With Love (and Tech)
 
+
 💻 Frontend
+
 
 React + TypeScript – Fast, scalable, and future-proof
 
@@ -56,7 +67,9 @@ Axios – Smooth API communication
 
 Framer Motion – Animations that wow 🤩
 
+
 🛠 Backend
+
 
 Node.js + Express – Speedy and flexible 
 
@@ -71,7 +84,7 @@ CORS – Seamless client-server love
 > Click the image above to watch a quick walkthrough of the platform in action!
 
 
- Useful Links
-📂 GitHub Repository: Creative Coding Showcase Platform
+## 🔗 Useful Links
 
-🎬 Demo Video: Watch on YouTube
+📂 **GitHub Repository:** [Creative Coding Showcase Platform](https://github.com/BHOOMI764/Creative_coding_sdg)  
+🎬 **Demo Video:** [Watch on YouTube](https://youtu.be/HXyq4Lkfc64?feature=shared)
