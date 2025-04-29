@@ -1,6 +1,7 @@
 ✨ Creative Coding Showcase Platform
-Show the World What You Code For 🌱💻
-A full-stack experience where innovation meets sustainability, one student project at a time.
+Show the World What You Code For 
+
+🌱💻   A full-stack experience where innovation meets sustainability, one student project at a time.
 
 🔥 What is This?
 Welcome to a game-changing platform built to ignite innovation, connect changemakers, and champion the UN Sustainable Development Goals (SDGs) through technology. Whether you’re a student coding your dreams, a mentor shaping the future, or a curious explorer — this is your space to discover, showcase, and inspire.
@@ -8,7 +9,9 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 💡 Code isn’t just logic — it’s impact.
 
 🚀 Why It Rocks
+
 👩‍🎓 For Students
+
 ✨ Show Off Your Superpowers – Build and publish jaw-dropping projects
 
 🎯 Align with Global Goals – Link your work to real-world UN SDGs
@@ -20,6 +23,7 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 📊 Track Ratings & Feedback – Get noticed. Get better. Grow fast.
 
 🎓 For Faculty
+
 🧠 Mentor with Meaning – Review, rate, and reward impactful student work
 
 🗨️ Private or Public Feedback – Encourage creativity, celebrate effort
@@ -29,6 +33,7 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 📈 Monitor Student Growth – Watch their skills—and their dreams—expand
 
 🌟 For Viewers
+
 🌍 Explore Future-Tech – Browse groundbreaking student projects
 
 🔎 Search by SDG Goals – Filter what matters to you
@@ -38,7 +43,9 @@ Welcome to a game-changing platform built to ignite innovation, connect changema
 🛠️ Access Source Code – Fork it, remix it, collaborate
 
 ⚙️ Built With Love (and Tech)
+
 💻 Frontend
+
 React + TypeScript – Fast, scalable, and future-proof
 
 React Router – Navigate like a pro
@@ -50,6 +57,7 @@ Axios – Smooth API communication
 Framer Motion – Animations that wow 🤩
 
 🛠 Backend
+
 Node.js + Express – Speedy and flexible
 
 SQLite – Lightweight, powerful, and serverless
