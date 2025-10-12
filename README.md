@@ -79,3 +79,5 @@ To inspire a global community of student innovators —
 where every project contributes to a more **sustainable, creative, and connected world.**  
 
 > 💫 *Innovate with purpose. Code for change.*  
+
+### 💖 Made with ❤️ by **Bhoomi Jaiswal**
