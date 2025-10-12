@@ -78,6 +78,12 @@ Whether you’re a **student** coding your ideas, a **mentor** guiding young inn
 To inspire a global community of student innovators —  
 where every project contributes to a more **sustainable, creative, and connected world.**  
 
-> 💫 *Innovate with purpose. Code for change.*  
+> 💫 *Innovate with purpose. Code for change.*
+
+📩 Contact
+
+Developer: Bhoomi Jaiswal
+Email: bhoomicat2005@gmail.com
 
 ### 💖 Made with ❤️ by **Bhoomi Jaiswal**
+
