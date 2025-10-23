@@ -1,6 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { HelmetProvider } from 'react-helmet-async';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProjectProvider } from './contexts/ProjectContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { GamificationProvider } from './contexts/GamificationContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -16,6 +23,13 @@ import NotFound from './pages/NotFound';
 import { UserRole } from './types';
 import StudentFeedback from './pages/dashboards/StudentFeedback';
 import Header from './components/layouts/Header';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
+import AchievementPanel from './components/gamification/AchievementPanel';
+import AdvancedSearch from './components/search/AdvancedSearch';
+import NotificationCenter from './components/notifications/NotificationCenter';
+import ToastContainer from './components/ui/ToastContainer';
+import ThemeToggle from './components/ui/ThemeToggle';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -33,11 +47,23 @@ const FacultyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <>{children}</>;
 };
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
 const AppContent: React.FC = () => {
   const { user } = useAuth();
   
   const getDashboardRouteForRole = (role: UserRole) => {
     switch (role) {
+      case 'admin': return '/dashboard/admin';
       case 'viewer': return '/dashboard/viewer';
       case 'student': return '/dashboard/student';
       case 'faculty': return '/dashboard/faculty';
@@ -46,7 +72,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <Header />
       <main className="container mx-auto px-4 py-8">
         <Routes>
@@ -92,6 +118,26 @@ const AppContent: React.FC = () => {
                 <FacultyDashboard />
               </FacultyRoute>
             } />
+            <Route path="/dashboard/admin" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } />
+            <Route path="/dashboard/analytics" element={
+              <ProtectedRoute>
+                <AnalyticsDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/achievements" element={
+              <ProtectedRoute>
+                <AchievementPanel />
+              </ProtectedRoute>
+            } />
+            <Route path="/search" element={
+              <ProtectedRoute>
+                <AdvancedSearch />
+              </ProtectedRoute>
+            } />
            
             <Route path="/projects/:id" element={
               <ProtectedRoute>
@@ -103,17 +149,66 @@ const AppContent: React.FC = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+      
+      {/* Global Components */}
+      <NotificationCenter />
+      <ToastContainer />
+      <ThemeToggle />
     </div>
   );
 };
 
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" />;
+  }
+  return <>{children}</>;
+};
+
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <ProjectProvider>
+              <NotificationProvider>
+                <GamificationProvider>
+                  <Router>
+                    <AppContent />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 4000,
+                        style: {
+                          background: '#363636',
+                          color: '#fff',
+                        },
+                        success: {
+                          duration: 3000,
+                          iconTheme: {
+                            primary: '#4ade80',
+                            secondary: '#fff',
+                          },
+                        },
+                        error: {
+                          duration: 5000,
+                          iconTheme: {
+                            primary: '#ef4444',
+                            secondary: '#fff',
+                          },
+                        },
+                      }}
+                    />
+                  </Router>
+                </GamificationProvider>
+              </NotificationProvider>
+            </ProjectProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 };
 
