@@ -8,8 +8,6 @@
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
 
 
-
-
 This platform won first place in the **Sustainable Development** for its innovative approach to connecting technology with global sustainability goals.
 
 ### 🚀 Key Features
@@ -45,21 +43,6 @@ This platform won first place in the **Sustainable Development** for its innovat
 - **Winston** for logging
 - **Helmet** for security
 - **Swagger** for API documentation
-
-### DevOps & Deployment
-- **Docker** containerization
-- **Docker Compose** for local development
-- **GitHub Actions** for CI/CD
-- **Prometheus** for monitoring
-- **Grafana** for visualization
-- **Nginx** for reverse proxy
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ 
-- Docker & Docker Compose
-- Git
 
 ### Installation
 
@@ -155,5 +138,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 
 **Made with ❤️ by Bhoomi Jaiswal for a sustainable future through technology**
+
 
 
