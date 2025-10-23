@@ -1,6 +1,6 @@
 ﻿# 🌍 Code Sustainability Platform
 
-> **A Hackathon-Winning Full-Stack Platform for Sustainable Development Through Technology**
+> **A Platform for Sustainable Development Through Technology**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -154,14 +154,6 @@ npm run dev
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 
-## 🌟 Acknowledgments
-
-- **UN Sustainable Development Goals** for the global framework
-- **React Community** for the amazing ecosystem
-- **Open Source Contributors** for their valuable contributions
-- **Hackathon Judges** for their feedback and recognition
-
----
-
 **Made with ❤️ by Bhoomi Jaiswal for a sustainable future through technology**
+
 
