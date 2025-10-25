@@ -388,12 +388,12 @@ const AdvancedSearch: React.FC = () => {
                 key={result.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <img
                   src={result.thumbnailUrl}
                   alt={result.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-56 object-cover"
                 />
                 <div className="p-6">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">

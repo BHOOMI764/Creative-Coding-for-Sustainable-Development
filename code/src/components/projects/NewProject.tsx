@@ -6,11 +6,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { API_URL } from '../../config';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import ImageUpload from '../common/ImageUpload';
 
 interface NewProjectForm {
   title: string;
   description: string;
-  thumbnailUrl: string;
+  thumbnailUrl?: string;
   repositoryUrl: string;
   demoUrl: string;
   teamName: string;
@@ -33,6 +34,7 @@ const NewProject: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sdgs, setSdgs] = useState<SDG[]>([]);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const { register, handleSubmit, formState: { errors } } = useForm<NewProjectForm>();
 
   useEffect(() => {
@@ -50,6 +52,10 @@ const NewProject: React.FC = () => {
     fetchSDGs();
   }, []);
 
+  const handleImageUploaded = (imageUrl: string) => {
+    setThumbnailUrl(imageUrl);
+  };
+
   const onSubmit = async (data: NewProjectForm) => {
     setLoading(true);
     setError(null);
@@ -65,10 +71,17 @@ const NewProject: React.FC = () => {
         ? data.sdgs.map(id => parseInt(id))
         : [];
 
+      // Validate that either an image is uploaded or a URL is provided
+      if (!thumbnailUrl && !data.thumbnailUrl?.trim()) {
+        setError('Please upload an image or provide a thumbnail URL');
+        setLoading(false);
+        return;
+      }
+
       const projectData = {
         title: data.title.trim(),
         description: data.description.trim(),
-        thumbnailUrl: data.thumbnailUrl.trim(),
+        thumbnailUrl: thumbnailUrl || data.thumbnailUrl?.trim() || '',
         repositoryUrl: data.repositoryUrl?.trim() || '',
         demoUrl: data.demoUrl?.trim() || '',
         teamName: data.teamName.trim(),
@@ -144,11 +157,26 @@ const NewProject: React.FC = () => {
           </div>
 
           <div>
-            <Input
-              label="Thumbnail URL"
-              {...register('thumbnailUrl', { required: 'Thumbnail URL is required' })}
-              error={errors.thumbnailUrl?.message}
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Project Thumbnail
+            </label>
+            <ImageUpload
+              onImageUploaded={handleImageUploaded}
+              currentImageUrl={thumbnailUrl}
+              className="mt-1"
             />
+            {!thumbnailUrl && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-500 mb-2">
+                  Or provide a thumbnail URL:
+                </p>
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  {...register('thumbnailUrl')}
+                  error={errors.thumbnailUrl?.message}
+                />
+              </div>
+            )}
           </div>
         </div>
 

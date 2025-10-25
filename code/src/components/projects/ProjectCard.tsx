@@ -14,15 +14,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, featured = false }) 
   
   return (
     <div className={`
-      bg-white rounded-lg shadow-md overflow-hidden transform transition duration-300
-      hover:shadow-lg hover:-translate-y-1
-      ${featured ? 'border-2 border-blue-500' : ''}
+      bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300
+      hover:shadow-xl hover:-translate-y-2
+      ${featured ? 'ring-2 ring-blue-500' : ''}
     `}>
       <div className="relative">
         <img 
           src={thumbnailUrl} 
           alt={title} 
-          className="w-full h-40 object-cover"
+          className="w-full h-56 object-cover"
         />
         
         {featured && (

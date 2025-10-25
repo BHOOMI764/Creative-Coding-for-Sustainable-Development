@@ -203,6 +203,7 @@ const initializeDB = async () => {
     
     await seedFeedbackData();
     await seedSampleProjects();
+    await updateProjectImages();
     
     console.log('Database initialized successfully');
   } catch (err) {
@@ -216,14 +217,19 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
+  console.log('Auth middleware - URL:', req.url, 'Auth header:', authHeader, 'Token:', token ? 'Present' : 'Missing');
+  
   if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ message: 'Authentication required' });
   }
   
   jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret', (err, user) => {
     if (err) {
+      console.log('Token verification failed:', err.message);
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
+    console.log('Token verified for user:', user.id, 'role:', user.role);
     req.user = user;
     next();
   });
@@ -523,6 +529,162 @@ app.post('/api/projects', authenticateToken, async (req, res) => {
     res.status(201).json(project);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update project endpoint
+app.put('/api/projects/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Verify project exists
+    const project = await db.get('SELECT * FROM projects WHERE id = ?', [id]);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check if user has permission to update this project
+    // Allow if user is admin, faculty, or a team member of the project
+    let hasPermission = false;
+    
+    if (req.user.role === 'admin' || req.user.role === 'faculty') {
+      hasPermission = true;
+    } else {
+      // Check if user is a team member
+      const teamMember = await db.get(`
+        SELECT tm.* 
+        FROM team_members tm
+        JOIN projects p ON tm.teamId = p.teamId
+        WHERE p.id = ? AND tm.userId = ?
+      `, [id, req.user.id]);
+      hasPermission = !!teamMember;
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({ message: 'Unauthorized to update this project' });
+    }
+
+    // Update project
+    await db.run(`
+      UPDATE projects 
+      SET title = ?, description = ?, thumbnailUrl = ?, 
+          repositoryUrl = ?, demoUrl = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [
+      updates.title || project.title,
+      updates.description || project.description,
+      updates.thumbnailUrl || project.thumbnailUrl,
+      updates.repositoryUrl || project.repositoryUrl,
+      updates.demoUrl || project.demoUrl,
+      id
+    ]);
+
+    // Update SDGs if provided
+    if (updates.sdgs) {
+      await db.run('DELETE FROM project_sdgs WHERE projectId = ?', [id]);
+      const sdgStatement = await db.prepare(
+        'INSERT INTO project_sdgs (projectId, sdgId) VALUES (?, ?)'
+      );
+      for (const sdgId of updates.sdgs) {
+        await sdgStatement.run(id, sdgId);
+      }
+      await sdgStatement.finalize();
+    }
+
+    // Update media if provided
+    if (updates.mediaUrls) {
+      await db.run('DELETE FROM project_media WHERE projectId = ?', [id]);
+      const mediaStatement = await db.prepare(
+        'INSERT INTO project_media (projectId, mediaUrl, mediaType) VALUES (?, ?, ?)'
+      );
+      for (const mediaUrl of updates.mediaUrls) {
+        const mediaType = mediaUrl.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'video';
+        await mediaStatement.run(id, mediaUrl, mediaType);
+      }
+      await mediaStatement.finalize();
+    }
+
+    // Get updated project with all related data
+    const updatedProject = await db.get(`
+      SELECT 
+        p.id, p.title, p.description, p.thumbnailUrl, p.repositoryUrl, p.demoUrl, 
+        p.teamId, p.createdAt, p.updatedAt,
+        AVG(f.rating) as averageRating
+      FROM projects p
+      LEFT JOIN feedback f ON p.id = f.projectId
+      WHERE p.id = ?
+      GROUP BY p.id
+    `, [id]);
+
+    // Get SDGs
+    const sdgs = await db.all(`
+      SELECT s.*
+      FROM sdgs s
+      JOIN project_sdgs ps ON s.id = ps.sdgId
+      WHERE ps.projectId = ?
+    `, [id]);
+
+    // Get media
+    const media = await db.all(`
+      SELECT mediaUrl
+      FROM project_media
+      WHERE projectId = ?
+    `, [id]);
+
+    // Get team
+    const team = await db.get('SELECT * FROM teams WHERE id = ?', [project.teamId]);
+
+    updatedProject.sdgs = sdgs;
+    updatedProject.mediaUrls = media.map(m => m.mediaUrl);
+    updatedProject.teamName = team.name;
+
+    res.json(updatedProject);
+  } catch (err) {
+    console.error('Error updating project:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete project endpoint
+app.delete('/api/projects/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify project exists
+    const project = await db.get('SELECT * FROM projects WHERE id = ?', [id]);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check if user has permission to delete this project
+    // Allow if user is admin, faculty, or a team member of the project
+    let hasPermission = false;
+    
+    if (req.user.role === 'admin' || req.user.role === 'faculty') {
+      hasPermission = true;
+    } else {
+      // Check if user is a team member
+      const teamMember = await db.get(`
+        SELECT tm.* 
+        FROM team_members tm
+        JOIN projects p ON tm.teamId = p.teamId
+        WHERE p.id = ? AND tm.userId = ?
+      `, [id, req.user.id]);
+      hasPermission = !!teamMember;
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({ message: 'Unauthorized to delete this project' });
+    }
+
+    // Delete project (cascade will handle related records)
+    await db.run('DELETE FROM projects WHERE id = ?', [id]);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting project:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1156,10 +1318,12 @@ app.post('/api/faculty/projects/:id/feedback', authenticateToken, async (req, re
 });
 
 // Get project feedback
-app.get('/api/projects/:id/feedback', authenticateToken, async (req, res) => {
-  const { id: projectId } = req.params;
+app.get('/api/projects/:projectId/feedback', authenticateToken, async (req, res) => {
+  const { projectId } = req.params;
 
   try {
+    console.log('Fetching feedback for project:', projectId, 'by user:', req.user.id, 'role:', req.user.role);
+    
     // Get feedback based on user role
     let feedback;
     if (req.user.role === 'faculty' || req.user.role === 'admin') {
@@ -1258,57 +1422,6 @@ app.post('/api/feedback', authenticateToken, async (req, res) => {
   }
 });
 
-// Get project feedback endpoint
-app.get('/api/projects/:projectId/feedback', authenticateToken, async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const userId = req.user.id;
-
-    console.log('Fetching feedback for project:', {
-      projectId,
-      userId
-    });
-
-    // Get user role
-    const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
-    console.log('User role:', user?.role);
-
-    // Build the query based on user role
-    let query = `
-      SELECT 
-        f.*,
-        u.username,
-        u.firstName,
-        u.lastName,
-        u.role
-      FROM feedback f
-      JOIN users u ON f.userId = u.id
-      WHERE f.projectId = ?
-    `;
-
-    // If not faculty/admin, only show non-private feedback
-    const params = [projectId];
-    if (!['faculty', 'admin'].includes(user?.role)) {
-      query += ' AND (f.isPrivate = 0 OR f.userId = ?)';
-      params.push(userId);
-    }
-
-    query += ' ORDER BY f.createdAt DESC';
-
-    console.log('Executing feedback query:', {
-      query,
-      params
-    });
-
-    const feedback = await db.all(query, params);
-    console.log('Found feedback items:', feedback.length);
-
-    res.json(feedback);
-  } catch (error) {
-    console.error('Error fetching feedback:', error);
-    res.status(500).json({ message: 'Error fetching feedback', error: error.message });
-  }
-});
 
 // Get all feedback for a faculty member
 app.get('/api/faculty/feedback', authenticateToken, async (req, res) => {
@@ -1411,68 +1524,246 @@ const seedFeedbackData = async () => {
   }
 };
 
+// Function to update existing projects with better images
+const updateProjectImages = async () => {
+  try {
+    console.log('Updating project images...');
+    
+    const imageUpdates = [
+      { id: 1, thumbnailUrl: 'https://images.unsplash.com/photo-1581092921461-39b9d08a9b21?w=1200&auto=format&fit=crop&q=80' },
+      { id: 2, thumbnailUrl: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=1200&auto=format&fit=crop&q=80' },
+      { id: 3, thumbnailUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1200&auto=format&fit=crop&q=80' },
+      { id: 4, thumbnailUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=1200&auto=format&fit=crop&q=80' },
+      { id: 5, thumbnailUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=1200&auto=format&fit=crop&q=80' },
+      { id: 6, thumbnailUrl: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&auto=format&fit=crop&q=80' },
+      { id: 7, thumbnailUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&auto=format&fit=crop&q=80' },
+      { id: 8, thumbnailUrl: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1200&auto=format&fit=crop&q=80' }
+    ];
+    
+    for (const update of imageUpdates) {
+      await db.run('UPDATE projects SET thumbnailUrl = ? WHERE id = ?', [update.thumbnailUrl, update.id]);
+    }
+    
+    console.log('Project images updated successfully');
+  } catch (err) {
+    console.error('Error updating project images:', err);
+  }
+};
+
 // Function to seed sample projects
 const seedSampleProjects = async () => {
   try {
-    // Check if there are any projects
-    const projectsCount = await db.get('SELECT COUNT(*) as count FROM projects');
-    
-    if (projectsCount.count === 0) {
+    // Clear existing projects and reseed with new ones
+    console.log('Clearing existing projects and reseeding...');
+    await db.run('DELETE FROM project_sdgs');
+    await db.run('DELETE FROM project_media');
+    await db.run('DELETE FROM projects');
+    await db.run('DELETE FROM team_members');
+    await db.run('DELETE FROM teams');
       console.log('Seeding sample projects...');
       
-      // Create a sample team
-      const teamResult = await db.run(
-        'INSERT INTO teams (name, description) VALUES (?, ?)',
-        ['Innovation Team', 'A team focused on sustainable development projects']
-      );
-      const teamId = teamResult.lastID;
+      // Create multiple sample teams
+      const teams = [
+        { name: 'EcoTech Solutions', description: 'A team focused on sustainable technology development' },
+        { name: 'Green Innovation Hub', description: 'Developing innovative solutions for environmental challenges' },
+        { name: 'Sustainable Future Lab', description: 'Research and development for sustainable technologies' },
+        { name: 'Climate Action Team', description: 'Committed to climate change mitigation and adaptation' },
+        { name: 'Renewable Energy Group', description: 'Specializing in clean energy solutions' },
+        { name: 'Environmental Tech Crew', description: 'Building technology for environmental protection' },
+        { name: 'Green Building Alliance', description: 'Sustainable architecture and construction solutions' },
+        { name: 'Ocean Conservation Squad', description: 'Marine life protection and ocean cleanup technologies' },
+        { name: 'Smart City Developers', description: 'Creating intelligent and sustainable urban solutions' },
+        { name: 'Biodiversity Guardians', description: 'Protecting and preserving natural ecosystems' }
+      ];
       
-      // Sample projects with AI-generated images
+      const teamIds = [];
+      for (const team of teams) {
+        const teamResult = await db.run(
+          'INSERT INTO teams (name, description) VALUES (?, ?)',
+          [team.name, team.description]
+        );
+        teamIds.push(teamResult.lastID);
+      }
+      
+      // Create sample users and add them to teams
+      const sampleUsers = [
+        { username: 'admin', email: 'admin@example.com', password: 'admin123', role: 'admin', firstName: 'Admin', lastName: 'User' },
+        { username: 'faculty1', email: 'faculty1@example.com', password: 'faculty123', role: 'faculty', firstName: 'Dr. Sarah', lastName: 'Johnson' },
+        { username: 'faculty2', email: 'faculty2@example.com', password: 'faculty123', role: 'faculty', firstName: 'Prof. Michael', lastName: 'Chen' },
+        { username: 'student1', email: 'student1@example.com', password: 'student123', role: 'student', firstName: 'Alex', lastName: 'Smith' },
+        { username: 'student2', email: 'student2@example.com', password: 'student123', role: 'student', firstName: 'Emma', lastName: 'Wilson' },
+        { username: 'student3', email: 'student3@example.com', password: 'student123', role: 'student', firstName: 'James', lastName: 'Brown' },
+        { username: 'student4', email: 'student4@example.com', password: 'student123', role: 'student', firstName: 'Sophia', lastName: 'Davis' },
+        { username: 'student5', email: 'student5@example.com', password: 'student123', role: 'student', firstName: 'David', lastName: 'Miller' }
+      ];
+      
+      const userIds = [];
+      for (const user of sampleUsers) {
+        // Check if user already exists
+        const existingUser = await db.get('SELECT id FROM users WHERE username = ?', [user.username]);
+        if (existingUser) {
+          userIds.push(existingUser.id);
+          continue;
+        }
+        
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(user.password, salt);
+        
+        const userResult = await db.run(
+          'INSERT INTO users (username, email, password, role, firstName, lastName) VALUES (?, ?, ?, ?, ?, ?)',
+          [user.username, user.email, hashedPassword, user.role, user.firstName, user.lastName]
+        );
+        userIds.push(userResult.lastID);
+      }
+      
+      // Add users to teams as team members
+      for (let i = 0; i < teamIds.length; i++) {
+        const teamId = teamIds[i];
+        const userId = userIds[i % userIds.length]; // Distribute users across teams
+        
+        // Check if team member already exists
+        const existingMember = await db.get(
+          'SELECT id FROM team_members WHERE teamId = ? AND userId = ?',
+          [teamId, userId]
+        );
+        
+        if (!existingMember) {
+          await db.run(
+            'INSERT INTO team_members (teamId, userId, role) VALUES (?, ?, ?)',
+            [teamId, userId, 'member']
+          );
+        }
+      }
+      
+      // Sample projects with high-quality images
       const projects = [
         {
           title: 'Smart Water Management System',
-          description: 'An IoT-based system for monitoring and optimizing water usage in urban areas.',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1581092921461-39b9d08a9b21?w=800&auto=format&fit=crop&q=60',
+          description: 'An IoT-based system for monitoring and optimizing water usage in urban areas with real-time analytics and automated controls.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1581092921461-39b9d08a9b21?w=800&h=600&fit=crop&crop=center',
           repositoryUrl: 'https://github.com/example/smart-water',
           demoUrl: 'https://demo.smart-water.example.com',
           sdgs: [6, 11, 13] // Clean Water, Sustainable Cities, Climate Action
         },
         {
           title: 'Renewable Energy Dashboard',
-          description: 'Real-time monitoring and analytics platform for renewable energy systems.',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=800&auto=format&fit=crop&q=60',
+          description: 'Real-time monitoring and analytics platform for renewable energy systems with predictive maintenance capabilities.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=800&h=600&fit=crop&crop=center',
           repositoryUrl: 'https://github.com/example/energy-dashboard',
           demoUrl: 'https://demo.energy-dashboard.example.com',
           sdgs: [7, 13] // Clean Energy, Climate Action
         },
         {
           title: 'Sustainable Agriculture App',
-          description: 'Mobile application for farmers to implement sustainable farming practices.',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&auto=format&fit=crop&q=60',
+          description: 'Mobile application for farmers to implement sustainable farming practices with AI-powered crop recommendations.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&h=600&fit=crop&crop=center',
           repositoryUrl: 'https://github.com/example/sustainable-agri',
           demoUrl: 'https://demo.sustainable-agri.example.com',
           sdgs: [2, 15] // Zero Hunger, Life on Land
         },
         {
           title: 'Urban Waste Management',
-          description: 'Smart waste collection and recycling system for urban areas.',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&auto=format&fit=crop&q=60',
+          description: 'Smart waste collection and recycling system for urban areas with route optimization and citizen engagement.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&h=600&fit=crop&crop=center',
           repositoryUrl: 'https://github.com/example/urban-waste',
           demoUrl: 'https://demo.urban-waste.example.com',
           sdgs: [11, 12] // Sustainable Cities, Responsible Consumption
         },
         {
           title: 'Education Platform',
-          description: 'Online learning platform focused on sustainable development education.',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&auto=format&fit=crop&q=60',
+          description: 'Online learning platform focused on sustainable development education with interactive modules and assessments.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&h=600&fit=crop&crop=center',
           repositoryUrl: 'https://github.com/example/edu-platform',
           demoUrl: 'https://demo.edu-platform.example.com',
           sdgs: [4, 17] // Quality Education, Partnerships
+        },
+        {
+          title: 'Ocean Cleanup Technology',
+          description: 'Advanced marine debris collection system using autonomous drones and AI-powered detection.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/ocean-cleanup',
+          demoUrl: 'https://demo.ocean-cleanup.example.com',
+          sdgs: [14, 15] // Life Below Water, Life on Land
+        },
+        {
+          title: 'Green Building Analytics',
+          description: 'Smart building management system for optimizing energy efficiency and reducing carbon footprint.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/green-building',
+          demoUrl: 'https://demo.green-building.example.com',
+          sdgs: [7, 11, 13] // Clean Energy, Sustainable Cities, Climate Action
+        },
+        {
+          title: 'Digital Health Monitoring',
+          description: 'Remote health monitoring system for underserved communities with telemedicine integration.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/digital-health',
+          demoUrl: 'https://demo.digital-health.example.com',
+          sdgs: [3, 10] // Good Health, Reduced Inequalities
+        },
+        {
+          title: 'Climate Data Visualization',
+          description: 'Interactive platform for visualizing climate change data and environmental impact metrics.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/climate-viz',
+          demoUrl: 'https://demo.climate-viz.example.com',
+          sdgs: [13, 15] // Climate Action, Life on Land
+        },
+        {
+          title: 'Sustainable Transportation Network',
+          description: 'Smart transportation system promoting eco-friendly commuting with real-time route optimization.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/sustainable-transport',
+          demoUrl: 'https://demo.sustainable-transport.example.com',
+          sdgs: [11, 13] // Sustainable Cities, Climate Action
+        },
+        {
+          title: 'Biodiversity Conservation App',
+          description: 'Mobile application for tracking and conserving local biodiversity with citizen science integration.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/biodiversity-app',
+          demoUrl: 'https://demo.biodiversity-app.example.com',
+          sdgs: [15, 17] // Life on Land, Partnerships
+        },
+        {
+          title: 'Circular Economy Marketplace',
+          description: 'Digital platform connecting businesses for waste-to-resource exchanges and circular economy practices.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/circular-economy',
+          demoUrl: 'https://demo.circular-economy.example.com',
+          sdgs: [12, 17] // Responsible Consumption, Partnerships
+        },
+        {
+          title: 'Clean Air Quality Monitor',
+          description: 'IoT-based air quality monitoring system with public health alerts and pollution source tracking.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/air-quality',
+          demoUrl: 'https://demo.air-quality.example.com',
+          sdgs: [3, 11, 13] // Good Health, Sustainable Cities, Climate Action
+        },
+        {
+          title: 'Sustainable Food Distribution',
+          description: 'Platform connecting local food producers with consumers to reduce food waste and promote sustainable eating.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/food-distribution',
+          demoUrl: 'https://demo.food-distribution.example.com',
+          sdgs: [2, 12] // Zero Hunger, Responsible Consumption
+        },
+        {
+          title: 'Green Technology Innovation Hub',
+          description: 'Collaborative platform for sharing and developing sustainable technology solutions.',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=600&fit=crop&crop=center',
+          repositoryUrl: 'https://github.com/example/green-tech-hub',
+          demoUrl: 'https://demo.green-tech-hub.example.com',
+          sdgs: [9, 17] // Industry Innovation, Partnerships
         }
       ];
       
       // Insert projects
-      for (const project of projects) {
+      for (let i = 0; i < projects.length; i++) {
+        const project = projects[i];
+        const teamId = teamIds[i % teamIds.length]; // Distribute projects across teams
+        
         const result = await db.run(
           `INSERT INTO projects 
             (title, description, thumbnailUrl, repositoryUrl, demoUrl, teamId) 
@@ -1489,15 +1780,27 @@ const seedSampleProjects = async () => {
             [projectId, sdgNumber]
           );
         }
+        
+        // Add additional media URLs for each project
+        const additionalMediaUrls = [
+          'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&crop=center',
+          'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop&crop=center',
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=600&fit=crop&crop=center'
+        ];
+        
+        for (const mediaUrl of additionalMediaUrls) {
+          await db.run(
+            'INSERT INTO project_media (projectId, mediaUrl, mediaType) VALUES (?, ?, ?)',
+            [projectId, mediaUrl, 'image']
+          );
+        }
       }
       
       console.log('Sample projects seeded successfully');
-    }
   } catch (err) {
     console.error('Error seeding sample projects:', err);
   }
 };
-
 // Image upload endpoint
 app.post('/api/upload', authenticateToken, upload.single('image'), async (req, res) => {
   try {

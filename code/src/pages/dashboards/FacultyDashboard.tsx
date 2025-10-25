@@ -79,15 +79,44 @@ const FacultyDashboard = () => {
 
   const fetchProjectFeedback = async (projectId: number) => {
     try {
-      if (!token) return;
+      if (!token) {
+        console.error('No token available for feedback fetch');
+        toast.error('Authentication required');
+        return;
+      }
+      
+      console.log('Fetching feedback for project:', projectId);
+      console.log('Using token:', token ? 'Present' : 'Missing');
+      console.log('Token value:', token);
+      console.log('User:', user);
+      console.log('API URL:', `${API_URL}/api/projects/${projectId}/feedback`);
+      
+      // Test token validity first
+      try {
+        const testResponse = await axios.get(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('Token is valid, user:', testResponse.data);
+      } catch (testErr: any) {
+        console.error('Token validation failed:', testErr.response?.data);
+        toast.error('Authentication expired. Please log in again.');
+        return;
+      }
       
       const response = await axios.get(`${API_URL}/api/projects/${projectId}/feedback`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log('Feedback response:', response.data);
       setProjectFeedback(response.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching project feedback:', err);
-      toast.error('Failed to load feedback history');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to load feedback history';
+      console.error('Error details:', {
+        status: err.response?.status,
+        message: errorMessage,
+        data: err.response?.data
+      });
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
@@ -180,15 +209,15 @@ const FacultyDashboard = () => {
             projects.map((project) => (
               <div 
                 key={project.id} 
-                className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <img 
                   src={project.thumbnailUrl} 
                   alt={project.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-56 object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+                    target.src = 'https://via.placeholder.com/600x400?text=No+Image';
                   }}
                 />
                 <div className="p-4">

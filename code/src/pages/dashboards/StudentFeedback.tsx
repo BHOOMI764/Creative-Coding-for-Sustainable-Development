@@ -134,7 +134,7 @@ const StudentFeedback: React.FC = () => {
                   <img 
                     src={item.project.thumbnailUrl} 
                     alt={item.project.title}
-                    className="w-10 h-10 rounded object-cover"
+                    className="w-12 h-12 rounded-lg object-cover shadow-sm"
                   />
                   <span className="font-medium text-gray-900">{item.project.title}</span>
                 </div>

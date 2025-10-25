@@ -97,6 +97,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
       
       setProjects(projects.map(p => p.id === id ? res.data : p));
+      // Also update featured projects if it's in there
+      setFeaturedProjects(featuredProjects.map(p => p.id === id ? res.data : p));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update project.');
       throw err;
@@ -115,6 +117,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
       
       setProjects(projects.filter(p => p.id !== id));
+      setFeaturedProjects(featuredProjects.filter(p => p.id !== id));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete project.');
       throw err;

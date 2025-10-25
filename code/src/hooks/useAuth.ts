@@ -51,7 +51,13 @@ export const useAuth = () => {
     error: null,
   });
 
-  const navigate = useNavigate();
+  let navigate: any;
+  try {
+    navigate = useNavigate();
+  } catch (error) {
+    // Router context not available yet
+    navigate = null;
+  }
 
   // Initialize auth state
   useEffect(() => {
@@ -136,7 +142,9 @@ export const useAuth = () => {
       
       // Navigate based on role
       const dashboardRoute = getDashboardRoute(user.role);
-      navigate(dashboardRoute);
+      if (navigate) {
+        navigate(dashboardRoute);
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       setAuthState(prev => ({
@@ -181,7 +189,9 @@ export const useAuth = () => {
       
       // Navigate based on role
       const dashboardRoute = getDashboardRoute(user.role);
-      navigate(dashboardRoute);
+      if (navigate) {
+        navigate(dashboardRoute);
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Registration failed';
       setAuthState(prev => ({
@@ -204,7 +214,9 @@ export const useAuth = () => {
       loading: false,
       error: null,
     });
-    navigate('/');
+    if (navigate) {
+      navigate('/');
+    }
     toast.success('Logged out successfully');
   }, [navigate]);
 

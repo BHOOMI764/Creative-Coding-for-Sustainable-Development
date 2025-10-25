@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, AuthActionsProvider, useAuth } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -17,6 +17,7 @@ import FacultyDashboard from './pages/dashboards/FacultyDashboard';
 import ProjectDetails from './pages/projects/ProjectDetails';
 import StudentProjects from './pages/projects/StudentProjects';
 import NewProject from './components/projects/NewProject';
+import EditProject from './components/projects/EditProject';
 import AuthLayout from './components/layouts/AuthLayout';
 import DashboardLayout from './components/layouts/DashboardLayout';
 import NotFound from './pages/NotFound';
@@ -28,7 +29,6 @@ import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
 import AchievementPanel from './components/gamification/AchievementPanel';
 import AdvancedSearch from './components/search/AdvancedSearch';
 import NotificationCenter from './components/notifications/NotificationCenter';
-import ToastContainer from './components/ui/ToastContainer';
 import ThemeToggle from './components/ui/ThemeToggle';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -80,10 +80,10 @@ const AppContent: React.FC = () => {
           
           <Route element={<AuthLayout />}>
             <Route path="/login" element={
-              user ? <Navigate to={getDashboardRouteForRole(user.role)} replace /> : <LoginPage />
+              user ? <Navigate to={getDashboardRouteForRole(user.role as UserRole)} replace /> : <LoginPage />
             } />
             <Route path="/register" element={
-              user ? <Navigate to={getDashboardRouteForRole(user.role)} replace /> : <RegisterPage />
+              user ? <Navigate to={getDashboardRouteForRole(user.role as UserRole)} replace /> : <RegisterPage />
             } />
           </Route>
           
@@ -144,6 +144,11 @@ const AppContent: React.FC = () => {
                 <ProjectDetails />
               </ProtectedRoute>
             } />
+            <Route path="/projects/:id/edit" element={
+              <ProtectedRoute>
+                <EditProject />
+              </ProtectedRoute>
+            } />
           </Route>
           
           <Route path="*" element={<NotFound />} />
@@ -152,7 +157,6 @@ const AppContent: React.FC = () => {
       
       {/* Global Components */}
       <NotificationCenter />
-      <ToastContainer />
       <ThemeToggle />
     </div>
   );
@@ -172,39 +176,41 @@ const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <ProjectProvider>
-              <NotificationProvider>
-                <GamificationProvider>
-                  <Router>
-                    <AppContent />
-                    <Toaster
-                      position="top-right"
-                      toastOptions={{
-                        duration: 4000,
-                        style: {
-                          background: '#363636',
-                          color: '#fff',
-                        },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#4ade80',
-                            secondary: '#fff',
+            <Router>
+              <AuthActionsProvider>
+                <ProjectProvider>
+                  <NotificationProvider>
+                    <GamificationProvider>
+                      <AppContent />
+                      <Toaster
+                        position="top-right"
+                        toastOptions={{
+                          duration: 4000,
+                          style: {
+                            background: '#363636',
+                            color: '#fff',
                           },
-                        },
-                        error: {
-                          duration: 5000,
-                          iconTheme: {
-                            primary: '#ef4444',
-                            secondary: '#fff',
+                          success: {
+                            duration: 3000,
+                            iconTheme: {
+                              primary: '#4ade80',
+                              secondary: '#fff',
+                            },
                           },
-                        },
-                      }}
-                    />
-                  </Router>
-                </GamificationProvider>
-              </NotificationProvider>
-            </ProjectProvider>
+                          error: {
+                            duration: 5000,
+                            iconTheme: {
+                              primary: '#ef4444',
+                              secondary: '#fff',
+                            },
+                          },
+                        }}
+                      />
+                    </GamificationProvider>
+                  </NotificationProvider>
+                </ProjectProvider>
+              </AuthActionsProvider>
+            </Router>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

@@ -17,12 +17,14 @@ interface ProjectFormProps {
   };
   isEditing?: boolean;
   projectId?: number;
+  onSubmit?: (data: any) => void;
 }
 
 const ProjectForm: React.FC<ProjectFormProps> = ({ 
   initialData,
   isEditing = false,
-  projectId
+  projectId,
+  onSubmit
 }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -44,20 +46,26 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     setError(null);
 
     try {
-      const endpoint = isEditing 
-        ? `${API_URL}/api/student/projects/${projectId}`
-        : `${API_URL}/api/student/projects`;
+      if (onSubmit) {
+        // Use custom onSubmit handler
+        await onSubmit(formData);
+      } else {
+        // Default behavior
+        const endpoint = isEditing 
+          ? `${API_URL}/api/projects/${projectId}`
+          : `${API_URL}/api/projects`;
 
-      const method = isEditing ? 'put' : 'post';
+        const method = isEditing ? 'put' : 'post';
 
-      const response = await axios[method](endpoint, formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        const response = await axios[method](endpoint, formData, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.status === 201 || response.status === 200) {
+          navigate('/student/dashboard');
         }
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        navigate('/student/dashboard');
       }
     } catch (err: any) {
       console.error('Error submitting project:', err);

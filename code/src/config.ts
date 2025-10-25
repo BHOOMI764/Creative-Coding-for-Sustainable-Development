@@ -1,7 +1,7 @@
 // API Configuration
 export const API_URL = process.env.NODE_ENV === 'production' 
   ? 'https://your-production-api.com' 
-  : 'http://localhost:5000';
+  : ''; // Use proxy in development
 
 // SDG Colors
 export const SDG_COLORS = {

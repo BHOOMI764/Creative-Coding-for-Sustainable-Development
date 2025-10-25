@@ -1,4 +1,7 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL } from '../config';
+import { isTokenExpired } from '../utils/auth';
 import { useAuth as useAuthHook } from '../hooks/useAuth';
 
 interface User {
@@ -42,11 +45,71 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const auth = useAuthHook();
+  const [auth, setAuth] = useState<AuthContextType>({
+    user: null,
+    token: localStorage.getItem('token'),
+    refreshToken: localStorage.getItem('refreshToken'),
+    loading: true,
+    error: null,
+  });
+
+  // Initialize auth state without navigation
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      const refreshTokenValue = localStorage.getItem('refreshToken');
+
+      if (token && !isTokenExpired(token)) {
+        try {
+          const response = await axios.get(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setAuth(prev => ({
+            ...prev,
+            user: response.data,
+            token,
+            refreshToken: refreshTokenValue,
+            loading: false,
+            error: null,
+          }));
+        } catch (error) {
+          // Token is invalid, clear it
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          setAuth(prev => ({
+            ...prev,
+            user: null,
+            token: null,
+            refreshToken: null,
+            loading: false,
+            error: null,
+          }));
+        }
+      } else {
+        setAuth(prev => ({
+          ...prev,
+          loading: false,
+        }));
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   return (
     <AuthContext.Provider value={auth}>
       {!auth.loading && children}
+    </AuthContext.Provider>
+  );
+};
+
+// Create a component that handles authentication actions with navigation
+export const AuthActionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const auth = useAuthHook();
+  
+  return (
+    <AuthContext.Provider value={auth}>
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useProjects } from '../../contexts/ProjectContext';
 import { API_URL } from '../../config';
-import { Star, Github, Globe, Calendar } from 'lucide-react';
+import { Star, Github, Globe, Calendar, Edit, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import ProjectFeedback from '../../components/projects/ProjectFeedback';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
 
 interface SDG {
   id: number;
@@ -46,11 +49,14 @@ interface Project {
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { deleteProject } = useProjects();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -92,6 +98,35 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteProject(project.id);
+      navigate('/projects');
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const canEditProject = () => {
+    if (!user || !project) return false;
+    
+    // Admin and faculty can edit any project
+    if (user.role === 'admin' || user.role === 'faculty') return true;
+    
+    // Check if user is a team member
+    if (project.team && project.team.members) {
+      return project.team.members.some(member => member.id === user.id);
+    }
+    
+    return false;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -129,7 +164,29 @@ const ProjectDetails: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {/* Project Header */}
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
-          <h1 className="text-2xl font-bold text-white mb-2">{project.title}</h1>
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-2xl font-bold text-white">{project.title}</h1>
+            {canEditProject() && (
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/projects/${project.id}/edit`)}
+                  className="flex items-center space-x-2 bg-white bg-opacity-20 border-white text-white hover:bg-opacity-30"
+                >
+                  <Edit size={16} />
+                  <span>Edit</span>
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center space-x-2 bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             {project.sdgs.map((sdg) => (
               <span
@@ -263,6 +320,45 @@ const ProjectDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Project"
+      >
+        <div className="p-6">
+          <p className="text-gray-600 mb-4">
+            Are you sure you want to delete "{project.title}"? This action cannot be undone.
+          </p>
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+              className="flex items-center space-x-2"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  <span>Delete Project</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
